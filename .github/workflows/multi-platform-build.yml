@@ -1,0 +1,63 @@
+name: Build App
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  # بناء تطبيق الأندرويد
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Prepare Android Project
+        run: |
+          echo '{"name": "app", "version": "1.0.0"}' > package.json
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "MyApp" "com.score.app" --web-dir . --confirm
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  # بناء تطبيق الويندوز
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Build EXE
+        run: |
+          npm install -g electron-builder
+          # بناء نسخة ويندوز سريعة للموقع
+          npx electron-builder --win --dir
+        continue-on-error: true
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v3
+        with:
+          name: Windows-App
+          path: dist/*.exe
