@@ -1,7 +1,8 @@
 name: Build Android APK
 on:
   push:
-    branches: [ main ] # سيتم البناء عند كل رفع للكود على الفرع الرئيسي
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,25 +16,31 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      - name: Initialize Package if missing
         run: |
-          npm install @capacitor/core @capacitor/cli
-          npm install @capacitor/android
-          npx cap init "My App" "com.example.app" --web-dir .
+          if [ ! -f package.json ]; then
+            npm init -y
+          fi
 
-      - name: Add Android Platform
-        run: npx cap add android
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          # التأكد من إنشاء الإعدادات حتى لو لم تكن موجودة
+          npx cap init "My App" "com.example.app" --web-dir . --confirm || true
 
-      - name: Build Android Project
-        run: npx cap sync android
+      - name: Setup Android Platform
+        run: |
+          npx cap add android || true
+          npx cap sync android
 
       - name: Build APK (Debug)
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: app-release-debug
+          name: Android-App-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
